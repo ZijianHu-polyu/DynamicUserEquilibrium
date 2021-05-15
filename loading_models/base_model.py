@@ -24,5 +24,5 @@ class BaseModel:
     def get_demand(self, link):
         pass
 
-    def update(self):
+    def update(self, t):
         pass
