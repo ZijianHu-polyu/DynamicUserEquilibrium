@@ -17,4 +17,8 @@ class DUEAssign(BaseAssign):
     def __init__(self, demand):
         super(DUEAssign, self).__init__(demand)
         self.unique_od_pairs = set(zip(self.demand["source"], self.demand["target"]))
-        print(self.unique_od_pairs)
+
+    def assign_(self, G):
+        for each in self.unique_od_pairs:
+            res = nx.shortest_path(G, source=each[0], target=each[1])
+            print(res)

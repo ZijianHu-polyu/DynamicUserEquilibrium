@@ -12,7 +12,7 @@ class Demand(object):
 
     def load_demand(self):
         self.data = pd.read_csv(self.filepath)
-        self.data["unit"] *= 1
+        self.data["unit"] *= 10
 
     def generate_demand(self):
         self.data = []

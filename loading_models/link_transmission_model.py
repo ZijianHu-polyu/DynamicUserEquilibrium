@@ -4,7 +4,6 @@ from agent import Agent
 from loading_models.base_model import BaseModel
 import math
 
-# TODO: Add buffer after each update.
 class LTM(BaseModel):
     def __init__(self, config, G, assign):
         super(LTM, self).__init__(G)
@@ -31,7 +30,7 @@ class LTM(BaseModel):
             self.G.edges[edge]["demand"] = 0
             self.G.edges[edge]["exp_travel_time"] = [[] for _ in range(self.timestep + 1)]
         self.demands = self.assign.assign(self.G)
-
+        self.assign.assign_(self.G)
     def get_demand(self, t, link):
         t_prime = t - max(math.ceil(link["forward_time"] / self.time_interval), 1)
         if t_prime < 0:
