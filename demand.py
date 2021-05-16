@@ -12,6 +12,7 @@ class Demand(object):
 
     def load_demand(self):
         self.data = pd.read_csv(self.filepath)
+        self.data["unit"] *= 1
 
     def generate_demand(self):
         self.data = []
@@ -22,6 +23,7 @@ class Demand(object):
             for each in od_pairs:
                 self.data.append([i, each[0], each[1], 0.2])
         self.data = pd.DataFrame(self.data, columns=["timestep", "source", "target", "unit"])
+
 
     def save_demand(self):
         self.data.to_csv(self.filepath, index=False)

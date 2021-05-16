@@ -1,4 +1,3 @@
-
 class BaseModel:
     def __init__(self, G):
         self.G = G
@@ -6,7 +5,10 @@ class BaseModel:
         self.duration = -1 # the longest loading time
         self.time_interval = -1
         self.timestep = 0
-        
+        self.total_travel_time = []
+        for edge in self.G.edges:
+            self.G.edges[edge]["buffer"] = []
+
     def init_graph(self):
         pass
 
@@ -18,10 +20,10 @@ class BaseModel:
         else:
             return link["foward_speed"] * link["density"]
 
-    def get_supply(self, link):
+    def get_supply(self, t, link):
         pass
 
-    def get_demand(self, link):
+    def get_demand(self, t, link):
         pass
 
     def update(self, t):

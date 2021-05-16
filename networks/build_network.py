@@ -21,11 +21,25 @@ class Network:
 
     def save(self):
         pass
-    
+
     def draw(self):
         nx.draw(self.G, pos=self.node_pos, node_color="k", with_labels=True, node_size=400)
         nx.draw_networkx_nodes(self.G,self.node_pos, node_color='white', node_size=300)
         plt.show()
+
+    def animation(self, colors):
+        # attributes: v/c
+        nx.draw(self.G, pos=self.node_pos, node_color="k", with_labels=True, node_size=400)
+        vis_nodes = nx.draw_networkx_nodes(self.G, self.node_pos, node_color='white', node_size=300)
+        for i, each in enumerate(colors[10:60]):
+            vis_edges = nx.draw_networkx_edges(self.G, self.node_pos, edge_color=each, width=2)
+            plt.savefig("images/image_%03d.jpg" % i)
+
+        import imageio
+        images = []
+        for i in range(50):
+            images.append(imageio.imread("images/image_%03d.jpg" % i))
+        imageio.mimsave('flash.gif', images)
 
     def test(self):
         self.load()
