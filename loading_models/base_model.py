@@ -13,12 +13,26 @@ class BaseModel:
         pass
 
     def fd(self, link): # triangular fundamental diagram
-        if link["density"] > self.jam_density:
-            return 0
-        elif link["density"] > link["critical_density"]:
-            return link["backward_speed"] * (self.jam_density - link["density"])
-        else:
-            return link["foward_speed"] * link["density"]
+        res = []
+        for each in link["density"]:
+            if each > self.jam_density:
+                res.append(0)
+            elif each > link["critical_density"]:
+                res.append(link["backward_speed"] * (self.jam_density - each))
+            else:
+                res.append(link["forward_speed"] * each)
+        return res
+
+    def fd_speed_density(self, link): # triangular fundamental diagram
+        res = []
+        for each in link["density"]:
+            if each > self.jam_density:
+                res.append(0)
+            elif each > link["critical_density"]:
+                res.append(link["backward_speed"] * (self.jam_density - each) / each)
+            else:
+                res.append(link["forward_speed"])
+        return res
 
     def get_supply(self, t, link):
         pass

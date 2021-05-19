@@ -3,6 +3,7 @@ import numpy as np
 from agent import Agent
 from loading_models.base_model import BaseModel
 import math
+import pickle
 
 class LTM(BaseModel):
     def __init__(self, config, G, assign):
@@ -13,7 +14,9 @@ class LTM(BaseModel):
         self.assign = assign
         self.demands = None
         self.jam_density = config.jam_density
+        self.travel_time_filepath = config.travel_time_filepath
         self.load_cur = 0
+        self.iteration = 0
 
     def init_graph(self):
         for edge in self.G.edges:
@@ -22,15 +25,17 @@ class LTM(BaseModel):
             self.G.edges[edge]["Q_in"] = np.zeros(self.timestep + 1)
             self.G.edges[edge]["Q_out"] = np.zeros(self.timestep + 1)
             self.G.edges[edge]["forward_time"] = self.G.edges[edge]["fft"]
-            self.G.edges[edge]["backward_time"] = 3 * self.G.edges[edge]["fft"]
+
             self.G.edges[edge]["forward_speed"] = int(self.G.edges[edge]["length"] / self.G.edges[edge]["forward_time"])
-            self.G.edges[edge]["backward_speed"] = int(self.G.edges[edge]["length"] / self.G.edges[edge]["backward_time"])
+            self.G.edges[edge]["critical_density"] = self.G.edges[edge]["capacity"] / self.G.edges[edge]["forward_speed"]
+            self.G.edges[edge]["backward_speed"] = self.G.edges[edge]["capacity"] / (self.jam_density -  self.G.edges[edge]["critical_density"])
+            self.G.edges[edge]["backward_time"] = self.G.edges[edge]["length"] / self.G.edges[edge]["backward_speed"]
             self.G.edges[edge]["queue"] = deque()
             self.G.edges[edge]["supply"] = 0
             self.G.edges[edge]["demand"] = 0
             self.G.edges[edge]["exp_travel_time"] = [[] for _ in range(self.timestep + 1)]
-        self.demands = self.assign.assign(self.G)
-        self.assign.assign_(self.G)
+        self.demands = self.assign.assign(self.G, self.iteration)
+
     def get_demand(self, t, link):
         t_prime = t - max(math.ceil(link["forward_time"] / self.time_interval), 1)
         if t_prime < 0:
@@ -41,7 +46,7 @@ class LTM(BaseModel):
     def get_supply(self, t, link):
         t_prime = t - max(math.ceil(link["backward_time"] / self.time_interval), 1)
         if t_prime < 0:
-            return 0
+            return link["capacity"]
         else:
             return min((link["N_down"][t_prime] - link["N_up"][t] + link["length"] * self.jam_density), link["capacity"])
 
@@ -67,28 +72,27 @@ class LTM(BaseModel):
         if t == 0:
             return
         for link in self.G.edges:
-            self.G.edges[link]["demand"] = self.get_demand(t, self.G.edges[link])
-            self.G.edges[link]["supply"] = self.get_supply(t, self.G.edges[link])
             self.G.edges[link]["N_up"][t] += self.G.edges[link]["N_up"][t - 1]
             self.G.edges[link]["N_down"][t] += self.G.edges[link]["N_down"][t - 1]
+            self.G.edges[link]["demand"] = self.get_demand(t, self.G.edges[link])
+            self.G.edges[link]["supply"] = self.get_supply(t, self.G.edges[link])
+
 
     def update(self, t):
         for node in self.G.nodes:
             in_links = self.G.in_edges(node)
             for in_link in in_links:
-                while len(self.G.edges[in_link]["queue"]) > 0 and self.G.edges[in_link]["demand"] >= 0:
+                while len(self.G.edges[in_link]["queue"]) > 0 and self.G.edges[in_link]["demand"] > 1e-4:
                     top_agent = self.G.edges[in_link]["queue"][0]
                     if top_agent.cur != len(top_agent.route) - 2:
                         next_edge = self.G.edges[(top_agent.route[top_agent.cur + 1], top_agent.route[top_agent.cur + 2])]
-                    
+                        # TODO: add constraints for demand level
                         if top_agent.unit <= next_edge["supply"]:
                             top_agent.cur += 1
                             ################################ record travel time #################################
-                            if len(top_agent.time_flags) > top_agent.cur:
-                                print()
                             top_agent.time_flags.append(t)
                             start_t = top_agent.time_flags[-2]
-                            dur_t = top_agent.time_flags[-1] - top_agent.time_flags[-2]
+                            dur_t = (top_agent.time_flags[-1] - top_agent.time_flags[-2])
                             self.G.edges[
                                 (top_agent.route[top_agent.cur - 1], top_agent.route[top_agent.cur])][
                                 "exp_travel_time"][start_t].append((dur_t, top_agent.unit))
@@ -113,7 +117,7 @@ class LTM(BaseModel):
                             ################################ record travel time #################################
                             pre_agent.time_flags.append(t)
                             start_t = pre_agent.time_flags[-2]
-                            dur_t = pre_agent.time_flags[-1] - pre_agent.time_flags[-2]
+                            dur_t = (pre_agent.time_flags[-1] - pre_agent.time_flags[-2])
                             self.G.edges[(pre_agent.route[pre_agent.cur - 1], pre_agent.route[pre_agent.cur])][
                                 "exp_travel_time"][start_t].append((dur_t, pre_agent.unit))
                             ################################ record travel time #################################
@@ -133,7 +137,7 @@ class LTM(BaseModel):
                         self.G.edges[in_link]["Q_out"][t] += top_agent.unit
                         self.G.edges[in_link]["N_down"][t + 1] += top_agent.unit
                         self.G.edges[in_link]["queue"].popleft()
-                        self.total_travel_time.append((t - top_agent.time_flags[0], top_agent.unit))
+                        self.total_travel_time.append(((t - top_agent.time_flags[0]) * self.time_interval, top_agent.unit))
                         ################################ record travel time #################################
                         start_t = top_agent.time_flags[-1]
                         dur_t = t - start_t
@@ -158,3 +162,34 @@ class LTM(BaseModel):
         temp_colors = (temp_colors - np.min(temp_colors)) / (np.max(temp_colors) - np.min(temp_colors))
 
         return temp_colors
+
+    def save_td_trave_time(self):
+        res = {}
+        for edge in self.G.edges:
+            self.G.edges[edge]["density"] = (self.G.edges[edge]["N_up"] - self.G.edges[edge]["N_down"]) * self.time_interval / self.G.edges[edge]["length"]
+            ins_speed = np.array(self.fd_speed_density(self.G.edges[edge]))
+            travel_time = self.G.edges[edge]["length"] / (ins_speed + 1e-4)
+            # process the exprience travel time
+            for i, exp_time in enumerate(self.G.edges[edge]["exp_travel_time"]):
+                if len(exp_time) == 0:
+                    continue
+                temp_travel_time = np.array(exp_time)
+                temp_travel_time = self.time_interval * np.sum((temp_travel_time[:, 0] - 1) * temp_travel_time[:, 1]) / np.sum(temp_travel_time[:, 1])
+                travel_time[i] = temp_travel_time
+            res[edge] = travel_time.tolist()
+        with open(self.travel_time_filepath % self.iteration, "wb") as f:
+            pickle.dump(res, f, pickle.HIGHEST_PROTOCOL)
+
+    def clear_and_reassign(self):
+        for edge in self.G.edges:
+            self.G.edges[edge]["N_up"] = np.zeros(self.timestep + 1)
+            self.G.edges[edge]["N_down"] = np.zeros(self.timestep + 1)
+            self.G.edges[edge]["Q_in"] = np.zeros(self.timestep + 1)
+            self.G.edges[edge]["Q_out"] = np.zeros(self.timestep + 1)
+            self.G.edges[edge]["queue"].clear()
+            self.G.edges[edge]["supply"] = 0
+            self.G.edges[edge]["demand"] = 0
+            self.G.edges[edge]["exp_travel_time"] = [[] for _ in range(self.timestep + 1)]
+        self.load_cur = 0
+        self.assign.deassign()
+        self.demands = self.assign.assign(self.G, self.iteration)

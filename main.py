@@ -13,22 +13,26 @@ if __name__ == "__main__":
     demand.load_demand()
     demand = demand.data
 
-    assign = DUEAssign(demand)
+    assign = DUEAssign(config, demand)
     model = LTM(config, net.G, assign)
     model.init_graph()
-    for i in range(config.timestep):
-        model.pre_update(i)
-        model.update(i)
-        model.pro_update()
-        model.load(i)
+    for iter in range(50):
+        for i in range(config.timestep):
+            model.pre_update(i)
+            model.update(i)
+            model.pro_update()
+            model.load(i)
 
-    # for edge in net.G.edges:
-    #     print(edge)
-    #     print(net.G.edges[edge]["N_up"][100:])
-    #     print(net.G.edges[edge]["N_down"][100:])
-    colors = model.set_vac()
-    # net.animation(colors)
-    travel_time = np.array(model.total_travel_time).T
-    travel_time = np.sum(travel_time[0] * travel_time[1]) / np.sum(travel_time[1])
-    print("Average travel time is")
-    print(travel_time)
+        # for edge in net.G.edges:
+        #     print(edge)
+        #     print(net.G.edges[edge]["N_up"][100:])
+        #     print(net.G.edges[edge]["N_down"][100:])
+        colors = model.set_vac()
+        # net.animation(colors)
+        travel_time = np.array(model.total_travel_time).T
+        travel_time = np.sum(travel_time[0] * travel_time[1]) / np.sum(travel_time[1])
+        print("Iteration %d: Average travel time is" % iter, end="\t")
+        print(travel_time)
+        model.save_td_trave_time()
+        model.iteration = iter + 1
+        model.clear_and_reassign() # run tdsp
