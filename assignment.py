@@ -12,8 +12,10 @@ class BaseAssign(object):
     def assign(self, G, iteration):
         temp = []
         for i in range(len(self.demand)):
-            temp.append(nx.shortest_path(G, source=self.demand["source"][i], target=self.demand["target"][i]))
+            temp.append({tuple(nx.shortest_path(G, source=self.demand["source"][i], target=self.demand["target"][i])):
+                             self.demand["unit"][i]})
         self.agent_list["route"] = temp
+        print(temp)
         return self.agent_list
 
     def deassign(self):
@@ -26,6 +28,7 @@ class DUEAssign(BaseAssign):
         self.unique_od_pairs = set(zip(self.demand["source"], self.demand["target"]))
         self.travel_time_filepath = config.travel_time_filepath
         self.time_interval = config.time_interval
+
     def generate_pathset(self, G):
         pathset = {}
         for each in self.unique_od_pairs:
@@ -35,11 +38,12 @@ class DUEAssign(BaseAssign):
         if iteration == 0:
             temp = []
             for i in range(len(self.demand)):
-                temp.append(nx.shortest_path(G, source=self.demand["source"][i], target=self.demand["target"][i]))
+                temp.append(
+                    {tuple(nx.shortest_path(G, source=self.demand["source"][i], target=self.demand["target"][i])):
+                         self.demand["unit"][i]})
             self.agent_list["route"] = temp
             return self.agent_list
-        else:
-            temp = []
+        else: # after iteration 0
             with open(self.travel_time_filepath % (iteration - 1), "rb") as f:
                 tdtt = pickle.load(f)
 
@@ -47,8 +51,13 @@ class DUEAssign(BaseAssign):
                 G.edges[link]["tdtt"] = np.round(np.array(tdtt[link]) / self.time_interval)
 
             for i in range(len(self.demand)):
-                temp.append(self.tdsp(G, source=self.demand["source"][i], target=self.demand["target"][i], t=int(self.demand["timestep"][i]))[1])
-            self.agent_list["route"] = temp
+                path = tuple(self.tdsp(G, source=self.demand["source"][i], target=self.demand["target"][i], t=int(self.demand["timestep"][i]))[1])
+                if path in self.agent_list["route"][i].keys():
+                    pass
+                else:
+                    for key, value in self.agent_list["route"][i].items():
+                        self.agent_list["route"][i][key] = value * (1 - 1 / np.sqrt(i+1))
+                    self.agent_list["route"][i][path] = 1 / np.sqrt(i+1)
             return self.agent_list
 
     def tdsp(self, G, source, target, t):

@@ -55,15 +55,15 @@ class LTM(BaseModel):
             return
 
         while self.demands["timestep"][self.load_cur] == t:
-            route = self.demands["route"][self.load_cur]
-            self.G.edges[(route[0], route[1])]["queue"].append(Agent(
-                self.demands["unit"][self.load_cur],
-                self.demands["source"][self.load_cur],
-                self.demands["target"][self.load_cur],
-                t, 0, self.demands["route"][self.load_cur],
-            ))
-            self.G.edges[(route[0], route[1])]["Q_in"][t] += self.demands["unit"][self.load_cur]
-            self.G.edges[(route[0], route[1])]["N_up"][t + 1] += self.demands["unit"][self.load_cur]
+            for route, unit in self.demands["route"][self.load_cur].items(): # prepare for DUE
+                self.G.edges[(route[0], route[1])]["queue"].append(Agent(
+                    unit,
+                    self.demands["source"][self.load_cur],
+                    self.demands["target"][self.load_cur],
+                    t, 0, route,
+                ))
+                self.G.edges[(route[0], route[1])]["Q_in"][t] += unit
+                self.G.edges[(route[0], route[1])]["N_up"][t + 1] += unit
             self.load_cur += 1
             if self.load_cur >= len(self.demands["timestep"]):
                 break

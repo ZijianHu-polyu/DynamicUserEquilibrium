@@ -4,6 +4,7 @@ from networks.build_network import Network
 from assignment import BaseAssign, DUEAssign
 from config import Config
 import numpy as np
+import matplotlib.pyplot as plt
 config = Config()
 
 if __name__ == "__main__":
@@ -16,7 +17,8 @@ if __name__ == "__main__":
     assign = DUEAssign(config, demand)
     model = LTM(config, net.G, assign)
     model.init_graph()
-    for iter in range(50):
+    losses = []
+    for iter in range(100):
         for i in range(config.timestep):
             model.pre_update(i)
             model.update(i)
@@ -36,3 +38,6 @@ if __name__ == "__main__":
         model.save_td_trave_time()
         model.iteration = iter + 1
         model.clear_and_reassign() # run tdsp
+        losses.append(travel_time)
+    plt.plot(losses)
+    plt.show()
