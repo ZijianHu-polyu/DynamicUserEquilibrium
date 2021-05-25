@@ -49,5 +49,7 @@ class Network:
 
 
 if __name__ == "__main__":
-    a = Network()
+    from config import Config
+    config = Config()
+    a = Network(config)
     a.test()

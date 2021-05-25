@@ -18,6 +18,7 @@ if __name__ == "__main__":
     model = LTM(config, net.G, assign)
     model.init_graph()
     losses = []
+    print("Graph %s, Nodes: %d, Edges %d" % (config.network_name, len(net.nodes), len(net.edges)))
     for iter in range(100):
         for i in range(config.timestep):
             model.pre_update(i)
