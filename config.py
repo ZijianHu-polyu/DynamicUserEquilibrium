@@ -5,5 +5,8 @@ class Config(object):
         self.duration = 1
         self.time_interval = 5
         self.timestep = int(self.duration * 3600 / self.time_interval)
-        self.demand_filepath = "networks/Nguyen_demands.csv"
+        self.network_name = "Sioux_Falls"
+        self.node_filepath = "network_data/%s/nodes.csv" % self.network_name
+        self.edge_filepath = "network_data/%s/edges.csv" % self.network_name
+        self.demand_filepath = "network_data/%s/demands.csv" % self.network_name
         self.travel_time_filepath = "outputs/link_travel_time_%03d.pkl"

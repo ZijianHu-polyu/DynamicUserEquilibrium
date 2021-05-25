@@ -1,13 +1,22 @@
-import networkx as nx
 import heapq
 import pickle
 import numpy as np
+import networkx as nx
 INF = 999999999
 
 class BaseAssign(object):
     def __init__(self, config, demand):
         self.demand = demand
         self.agent_list = self.demand
+        self.unique_od_pairs = set(zip(self.demand["source"], self.demand["target"]))
+
+    def generate_pathset(self, G):
+        pathset = {}
+        count = 0
+        for each in self.unique_od_pairs:
+            pathset[each] = list(nx.all_simple_paths(G, source=each[0], target=each[1]))
+            count += len(pathset[each])
+        return pathset, count
 
     def assign(self, G, iteration):
         temp = []
@@ -25,14 +34,8 @@ class BaseAssign(object):
 class DUEAssign(BaseAssign):
     def __init__(self, config, demand):
         super(DUEAssign, self).__init__(config, demand)
-        self.unique_od_pairs = set(zip(self.demand["source"], self.demand["target"]))
         self.travel_time_filepath = config.travel_time_filepath
         self.time_interval = config.time_interval
-
-    def generate_pathset(self, G):
-        pathset = {}
-        for each in self.unique_od_pairs:
-            pathset[each] = list(nx.all_simple_paths(G, source=each[0], target=each[1]))
 
     def assign(self, G, iteration):
         if iteration == 0:

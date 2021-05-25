@@ -35,6 +35,8 @@ class LTM(BaseModel):
             self.G.edges[edge]["demand"] = 0
             self.G.edges[edge]["exp_travel_time"] = [[] for _ in range(self.timestep + 1)]
         self.demands = self.assign.assign(self.G, self.iteration)
+        pathset, pathset_num = self.assign.generate_pathset(self.G)
+        print("Number of OD pairs: %d, Number of potential paths %d" % (len(self.assign.unique_od_pairs), pathset_num))
 
     def get_demand(self, t, link):
         t_prime = t - max(math.ceil(link["forward_time"] / self.time_interval), 1)

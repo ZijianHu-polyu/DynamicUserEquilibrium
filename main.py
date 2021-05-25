@@ -1,14 +1,14 @@
 from demand import Demand
 from loading_models.link_transmission_model import LTM
-from networks.build_network import Network
-from assignment import BaseAssign, DUEAssign
+from networks import Network
+from assignment import DUEAssign
 from config import Config
 import numpy as np
 import matplotlib.pyplot as plt
 config = Config()
 
 if __name__ == "__main__":
-    net = Network()
+    net = Network(config)
     demand = Demand(config)
     net.load()
     demand.load_demand()
@@ -37,7 +37,8 @@ if __name__ == "__main__":
         print(travel_time)
         model.save_td_trave_time()
         model.iteration = iter + 1
-        model.clear_and_reassign() # run tdsp
+
         losses.append(travel_time)
+        model.clear_and_reassign()  # run tdsp
     plt.plot(losses)
     plt.show()
